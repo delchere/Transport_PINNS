@@ -1,0 +1,11 @@
+Bond lengths for: Pt5H2Pt5
+==================================================
+
+Atom sequence: Pt-Pt-Pt-Pt-Pt-H-H-Pt-Pt-Pt-Pt-Pt
+
+REQUIRED BONDS:
+------------------------------
+Pt-Pt: 2.41 Å
+Pt-H: 1.7 Å
+H-H: 0.9 Å
+H-Pt: 1.7 Å
