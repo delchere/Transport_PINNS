@@ -1,32 +1,32 @@
 # Transport_PINNS
 
-**Simulation du transport électronique quantique dépendant du temps dans des jonctions moléculaires, à l'aide de réseaux de neurones informés par la physique (PINNs).**
+**Simulation of time-dependent quantum electron transport through molecular junctions using Physics-Informed Neural Networks (PINNs).**
 
 ---
 
-## 🎯 Rôle du projet
+## 🎯 What this project does
 
-Ce projet calcule **le courant électrique transitoire qui traverse une molécule placée entre deux électrodes métalliques** (par exemple `Pt5H2Pt5` : une molécule de H₂ entre deux chaînes de platine) lorsqu'elle est excitée par une **impulsion laser gaussienne** à l'échelle de la femtoseconde.
+This project computes **the transient electric current flowing through a molecule placed between two metallic electrodes** (for example `Pt5H2Pt5`: an H₂ molecule between two platinum chains) when the junction is excited by a **femtosecond Gaussian laser pulse**.
 
-Au lieu de résoudre l'équation de Schrödinger dépendante du temps avec un intégrateur numérique classique, le code entraîne un **réseau de neurones (PINN)** dont la fonction de perte impose directement l'équation physique. Le réseau apprend ainsi la fonction d'onde ψ(t), à partir de laquelle on calcule le courant I(t).
+Instead of solving the time-dependent Schrödinger equation with a classical numerical integrator, the code trains a **neural network (PINN)** whose loss function directly enforces the physical equation. The network learns the wavefunction ψ(t), from which the current I(t) is computed.
 
-En résumé, le code répond à la question :
+In short, the code answers the question:
 
-> *« Si j'éclaire cette jonction moléculaire avec une impulsion lumineuse, quel courant traverse la molécule au cours du temps ? »*
+> *"If I shine a light pulse on this molecular junction, what current flows through the molecule over time?"*
 
 ---
 
-## 🧭 Vue d'ensemble du pipeline
+## 🧭 Pipeline overview
 
-Le projet se compose de **deux grandes étapes** :
+The project consists of **two main stages**:
 
 ```
  ┌──────────────────────────────────────────────────────────────────────┐
- │ ÉTAPE 1 — Préparation du système (DFT)            [racine du dépôt]  │
+ │ STAGE 1 — System preparation (DFT)                 [repository root] │
  │                                                                      │
- │  Formule chimique ──► BondDatabase ──► GeometryBuilder ──► Hamiltonian│
- │   ex. "Pt5H2Pt5"      (longueurs de    (positions des     Extractor  │
- │                         liaisons)        atomes, ASE)     (GPAW/LCAO)│
+ │  Chemical formula ──► BondDatabase ──► GeometryBuilder ──► Hamiltonian│
+ │   e.g. "Pt5H2Pt5"     (bond lengths)   (atomic positions,  Extractor │
+ │                                          ASE)              (GPAW/LCAO)│
  │                                                              │       │
  │                                    hamiltonian_output/ ◄─────┘       │
  │                                    H_scat, S_scat, H_lead, Σ, Γ, E_F │
@@ -34,134 +34,134 @@ Le projet se compose de **deux grandes étapes** :
                                    │
                                    ▼
  ┌──────────────────────────────────────────────────────────────────────┐
- │ ÉTAPE 2 — Dynamique quantique par PINN         [dossier quantum_pinns]│
+ │ STAGE 2 — Quantum dynamics with PINNs        [quantum_pinns package] │
  │                                                                      │
  │  HamiltonianLoader ──► QuantumSystem ──► PINNSolver ──► Observables  │
- │  (lit H, Σ, Γ)         (normalisation,   (entraîne un    (courant I(t)│
- │                         états            PINN par        intégré sur │
- │                         stationnaires)   énergie/mode)   l'énergie)  │
+ │  (reads H, Σ, Γ)       (normalization,   (trains one     (current I(t)│
+ │                         stationary       PINN per        integrated  │
+ │                         states)          energy/mode)    over energy)│
  │                                                              │       │
  │                                results_pair_i_j/ ◄───────────┘       │
- │                                courant (.dat) + figures (.png)       │
+ │                                current (.dat) + figures (.png)       │
  └──────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🔬 La physique en quelques lignes
+## 🔬 The physics in a nutshell
 
-1. **Système** : une région de diffusion (molécule + quelques atomes métalliques) couplée à deux électrodes semi-infinies identiques (système symétrique).
-2. **Hamiltonien statique** `H₀` et matrice de recouvrement `S` obtenus par DFT (GPAW, mode LCAO, fonctionnelle PBE).
-3. **Self-énergie des électrodes** `Σ` (évaluée au niveau de Fermi) et **matrice de couplage** `Γ = i(Σ − Σ†)`.
-4. **États stationnaires** pour chaque énergie `E` et chaque mode α de `Γ` :
-   `ψ_st = G^R(E) · √v_α · ξ_α`, avec `G^R(E) = (E − H₀ − Σ)⁻¹`.
-5. **Perturbation** : impulsion gaussienne modulée appliquée entre les orbitales 0 et 1 :
-   `H_p(t) = −h_e1 · cos(ω(t − t_c)) · exp(−(t − t_c)² / 2W₀²)` (+ une deuxième impulsion retardée optionnelle).
-6. **Équation résolue par le PINN** pour la partie perturbée `ψ_p(t)` de la fonction d'onde :
-   `i ∂ψ_p/∂t = (H₀ + Σ + H_p(t)) ψ_p + H_p(t) e^{−iEt} ψ_st`, avec `ψ_p(0) = 0`.
-7. **Courant** : calculé entre deux orbitales choisies (`I ∝ ψ_i* H_ij ψ_j`), pondéré par la distribution de Fermi-Dirac puis intégré sur l'énergie :
+1. **System**: a scattering region (molecule + a few metal atoms) coupled to two identical semi-infinite electrodes (symmetric system).
+2. **Static Hamiltonian** `H₀` and overlap matrix `S` obtained from DFT (GPAW, LCAO mode, PBE functional).
+3. **Lead self-energy** `Σ` (evaluated at the Fermi level) and **coupling matrix** `Γ = i(Σ − Σ†)`.
+4. **Stationary states** for each energy `E` and each eigenmode α of `Γ`:
+   `ψ_st = G^R(E) · √v_α · ξ_α`, with `G^R(E) = (E − H₀ − Σ)⁻¹`.
+5. **Perturbation**: a modulated Gaussian pulse applied between orbitals 0 and 1:
+   `H_p(t) = −h_e1 · cos(ω(t − t_c)) · exp(−(t − t_c)² / 2W₀²)` (+ an optional second, delayed pulse).
+6. **Equation solved by the PINN** for the perturbed part `ψ_p(t)` of the wavefunction:
+   `i ∂ψ_p/∂t = (H₀ + Σ + H_p(t)) ψ_p + H_p(t) e^{−iEt} ψ_st`, with `ψ_p(0) = 0`.
+7. **Current**: computed between two chosen orbitals (`I ∝ ψ_i* H_ij ψ_j`), weighted by the Fermi–Dirac distribution and integrated over energy:
    `I(t) = −2 Im[ ∫ dE/2π · f(E) · J(E, t) ]`.
 
-Toutes les grandeurs sont **adimensionnées** (énergie ÷ max|H₀|, temps ÷ ħ/E_scale) pour stabiliser l'entraînement, puis reconverties en unités physiques (secondes, ampères) à la fin.
+All quantities are **non-dimensionalized** (energy ÷ max|H₀|, time ÷ ħ/E_scale) to stabilize training, then converted back to physical units (seconds, amperes) at the end.
 
 ---
 
-## 📁 Structure du dépôt
+## 📁 Repository structure
 
 ```
 Transport_PINNS/
-├── run.py                          # ▶ Point d'entrée de l'étape 2 (simulation PINN)
+├── run.py                          # ▶ Entry point for stage 2 (PINN simulation)
 │
-├── bond_database.py                # Base de longueurs de liaison typiques (Å)
-├── geometry_builder.py             # Construit la géométrie linéaire de la molécule (ASE)
-├── hamiltonian_extractor.py        # Calcul DFT (GPAW) → H, S, Σ, Γ, niveaux de Fermi
-├── hamiltonian_extractor_example.py# ▶ Point d'entrée de l'étape 1 (pipeline complet DFT)
-├── geometry_builder_example.py     # Exemple : construire et visualiser une géométrie
-├── bond_example.py                 # Exemple : interroger la base de liaisons
-├── hamiltoniend-a.py               # Génère un petit système jouet 3×3 (tests rapides)
-├── utils.py                        # Fonctions utilitaires (sauvegarde/chargement de matrices)
+├── bond_database.py                # Database of typical bond lengths (Å)
+├── geometry_builder.py             # Builds the linear geometry of the molecule (ASE)
+├── hamiltonian_extractor.py        # DFT calculation (GPAW) → H, S, Σ, Γ, Fermi levels
+├── hamiltonian_extractor_example.py# ▶ Entry point for stage 1 (full DFT pipeline)
+├── geometry_builder_example.py     # Example: build and visualize a geometry
+├── bond_example.py                 # Example: query the bond database
+├── hamiltoniend-a.py               # Generates a small 3×3 toy system (quick tests)
+├── utils.py                        # Utility functions (save/load matrices)
 │
-├── quantum_pinns/                  # Paquet principal de simulation PINN
-│   ├── config.py                   # ⚙️  TOUS les paramètres de la simulation
-│   ├── hamiltonian_loader.py       # Chargement et validation des matrices
-│   ├── system.py                   # Système quantique : normalisation, états stationnaires, impulsion
-│   ├── model.py                    # Réseau de neurones (Keras) + fonction de perte physique
-│   ├── solver.py                   # Entraînement (Adam puis L-BFGS) et prédiction
-│   ├── observables.py              # Calcul et intégration du courant
-│   └── utils.py                    # Graphiques et sauvegarde des résultats
+├── quantum_pinns/                  # Main PINN simulation package
+│   ├── config.py                   # ⚙️  ALL simulation parameters
+│   ├── hamiltonian_loader.py       # Loads and validates the matrices
+│   ├── system.py                   # Quantum system: normalization, stationary states, pulse
+│   ├── model.py                    # Neural network (Keras) + physics-informed loss
+│   ├── solver.py                   # Training (Adam then L-BFGS) and prediction
+│   ├── observables.py              # Current calculation and integration
+│   └── utils.py                    # Plotting and result saving
 │
-├── hamiltonian_output/             # Matrices produites par l'étape 1 (exemple Pt5H2Pt5 fourni)
-├── geometry_output/                # Géométrie et visualisation de la molécule
-└── bond_database_output/           # Longueurs de liaison utilisées
+├── hamiltonian_output/             # Matrices produced by stage 1 (Pt5H2Pt5 example included)
+├── geometry_output/                # Molecule geometry and visualization
+└── bond_database_output/           # Bond lengths used
 ```
 
 ---
 
 ## ⚙️ Installation
 
-Python ≥ 3.10 recommandé.
+Python ≥ 3.10 recommended.
 
 ```bash
 git clone https://github.com/delchere/Transport_PINNS.git
 cd Transport_PINNS
 
-# Dépendances de l'étape 2 (simulation PINN)
+# Stage 2 dependencies (PINN simulation)
 pip install numpy scipy matplotlib tensorflow
 
-# Dépendances supplémentaires de l'étape 1 (calcul DFT)
+# Additional stage 1 dependencies (DFT calculation)
 pip install ase
-# GPAW : voir https://gpaw.readthedocs.io/install.html
-# (nécessite aussi les jeux de données PAW : `gpaw install-data <dossier>`)
+# GPAW: see https://gpaw.readthedocs.io/install.html
+# (also requires the PAW datasets: `gpaw install-data <directory>`)
 ```
 
-> 💡 GPAW n'est nécessaire **que** pour générer de nouveaux Hamiltoniens. Les matrices de l'exemple `Pt5H2Pt5` sont déjà fournies dans `hamiltonian_output/`, vous pouvez donc lancer directement l'étape 2.
+> 💡 GPAW is **only** needed to generate new Hamiltonians. The matrices for the `Pt5H2Pt5` example are already provided in `hamiltonian_output/`, so you can run stage 2 directly.
 
 ---
 
-## 🚀 Utilisation
+## 🚀 Usage
 
-Toutes les commandes se lancent **depuis la racine du dépôt** (les chemins sont relatifs).
+All commands must be run **from the repository root** (paths are relative).
 
-### Étape 1 — Générer les Hamiltoniens d'une nouvelle molécule (optionnel)
+### Stage 1 — Generate the Hamiltonians for a new molecule (optional)
 
-Ouvrez `hamiltonian_extractor_example.py` et changez la formule :
+Open `hamiltonian_extractor_example.py` and change the formula:
 
 ```python
-MATERIEL = "Pt5H2Pt5"   # ← votre système : électrode + molécule + électrode
+MATERIEL = "Pt5H2Pt5"   # ← your system: electrode + molecule + electrode
 ...
 extractor = HamiltonianExtractor(atoms_scattering=atoms, lead_type="Pt", n_lead_atoms=4)
 ```
 
-Puis lancez :
+Then run:
 
 ```bash
 python hamiltonian_extractor_example.py
 ```
 
-Cela produit :
+This produces:
 
-| Fichier | Contenu |
+| File | Content |
 |---|---|
-| `geometry_output/<formule>_positions.txt`, `_info.txt`, `_visualization.png` | Géométrie de la molécule |
-| `hamiltonian_output/H_scat.npy` / `.txt` | Hamiltonien de la région de diffusion |
-| `hamiltonian_output/S_scat.txt` | Matrice de recouvrement |
-| `hamiltonian_output/H_lead.npy`, `S_lead.txt` | Hamiltonien et recouvrement de l'électrode |
-| `hamiltonian_output/sigma.npy` | Self-énergie totale des deux électrodes Σ |
-| `hamiltonian_output/gamma.npy` | Matrice de couplage Γ |
-| `hamiltonian_output/fermi_levels.txt` | Niveaux de Fermi (région de diffusion, électrode) |
+| `geometry_output/<formula>_positions.txt`, `_info.txt`, `_visualization.png` | Molecule geometry |
+| `hamiltonian_output/H_scat.npy` / `.txt` | Hamiltonian of the scattering region |
+| `hamiltonian_output/S_scat.txt` | Overlap matrix |
+| `hamiltonian_output/H_lead.npy`, `S_lead.txt` | Lead Hamiltonian and overlap |
+| `hamiltonian_output/sigma.npy` | Total self-energy of both leads Σ |
+| `hamiltonian_output/gamma.npy` | Coupling matrix Γ |
+| `hamiltonian_output/fermi_levels.txt` | Fermi levels (scattering region, lead) |
 
-> Pour un test rapide sans DFT, `python hamiltoniend-a.py` génère un système jouet à 3 niveaux (`H_scat.npy`, `sigma.npy`, `gamma.npy` dans le dossier courant). Pensez à adapter `base_dir` dans `config.py` si vous l'utilisez.
+> For a quick test without DFT, `python hamiltoniend-a.py` generates a 3-level toy system (`H_scat.npy`, `sigma.npy`, `gamma.npy` in the current directory). Remember to adjust `base_dir` in `config.py` if you use it.
 
-### Étape 2 — Lancer la simulation PINN
+### Stage 2 — Run the PINN simulation
 
-1. Réglez les paramètres dans **`quantum_pinns/config.py`** (c'est le seul fichier à modifier).
-2. Lancez :
+1. Set the parameters in **`quantum_pinns/config.py`** (the only file you need to edit).
+2. Run:
 
 ```bash
 python run.py
 ```
 
-`run.py` tient en une ligne :
+`run.py` is a one-liner:
 
 ```python
 results = QuantumPINN(config).run_full_simulation()
@@ -169,69 +169,69 @@ results = QuantumPINN(config).run_full_simulation()
 
 ---
 
-## 🛠️ Paramètres principaux (`quantum_pinns/config.py`)
+## 🛠️ Main parameters (`quantum_pinns/config.py`)
 
-| Section | Paramètre | Signification | Défaut |
+| Section | Parameter | Meaning | Default |
 |---|---|---|---|
-| `EnergyParams` | `E_min`, `E_max` | Fenêtre d'énergie d'intégration (eV) | −2.5, 2.5 |
-| | `Ne` | Nombre de points d'énergie | 3 |
-| | `Ef`, `Temp` | Niveau de Fermi (eV) et température (K) | 0.0, 10 |
-| `TimeParams` | `t_min`, `t_max` | Fenêtre temporelle simulée (s) | 0 – 100 fs |
-| `GaussianPerturbation` | `cent` | Centre de l'impulsion (s) | 15 fs |
-| | `he1`, `he2` | Amplitudes des deux impulsions (eV) | 0.5, 0.0 |
-| | `W0` | Largeur de l'impulsion (s) | 5 fs |
-| | `tau` | Délai de la 2ᵉ impulsion (s) | 6 fs |
-| | `molE` | Fréquence porteuse : ħω = 2·molE (eV) | 0.7 |
-| `ModelParams` | `num_hidden_layers`, `num_neurons_per_layer` | Architecture du réseau | 4 × 64 |
-| | `N_collocation`, `N_initial`, `N_prediction` | Nombre de points d'entraînement / prédiction | 5000, 1000, 5000 |
-| | `N_train_adam`, `N_train_lbfgs` | Itérations Adam puis L-BFGS | 90 000, 700 |
-| | `lambda_pde`, `lambda_ic` | Poids de la perte physique / condition initiale | 1.0, 1.0 |
-| `CurrentParams` | `method` | `"pair"` (entre 2 orbitales) ou `"sequential"` (suite de paires) | `"pair"` |
-| | `orbital_i`, `orbital_j` | Orbitales pour la méthode `pair` | 1, 2 |
-| | `start_orbital`, `n_pairs` | Orbitales pour la méthode `sequential` | 0, 5 |
-| `DataPaths` | `base_dir` | Dossier contenant `H_scat.npy`, `sigma.npy`, `gamma.npy` | `hamiltonian_output` |
-| `SimulationConfig` | `seed` | Graine aléatoire (reproductibilité) | 1234 |
+| `EnergyParams` | `E_min`, `E_max` | Energy integration window (eV) | −2.5, 2.5 |
+| | `Ne` | Number of energy points | 3 |
+| | `Ef`, `Temp` | Fermi level (eV) and temperature (K) | 0.0, 10 |
+| `TimeParams` | `t_min`, `t_max` | Simulated time window (s) | 0 – 100 fs |
+| `GaussianPerturbation` | `cent` | Pulse center (s) | 15 fs |
+| | `he1`, `he2` | Amplitudes of the two pulses (eV) | 0.5, 0.0 |
+| | `W0` | Pulse width (s) | 5 fs |
+| | `tau` | Delay of the 2nd pulse (s) | 6 fs |
+| | `molE` | Carrier frequency: ħω = 2·molE (eV) | 0.7 |
+| `ModelParams` | `num_hidden_layers`, `num_neurons_per_layer` | Network architecture | 4 × 64 |
+| | `N_collocation`, `N_initial`, `N_prediction` | Number of training / prediction points | 5000, 1000, 5000 |
+| | `N_train_adam`, `N_train_lbfgs` | Adam then L-BFGS iterations | 90,000, 700 |
+| | `lambda_pde`, `lambda_ic` | Weights of the physics / initial-condition losses | 1.0, 1.0 |
+| `CurrentParams` | `method` | `"pair"` (between 2 orbitals) or `"sequential"` (chain of pairs) | `"pair"` |
+| | `orbital_i`, `orbital_j` | Orbitals for the `pair` method | 1, 2 |
+| | `start_orbital`, `n_pairs` | Orbitals for the `sequential` method | 0, 5 |
+| `DataPaths` | `base_dir` | Folder containing `H_scat.npy`, `sigma.npy`, `gamma.npy` | `hamiltonian_output` |
+| `SimulationConfig` | `seed` | Random seed (reproducibility) | 1234 |
 
-> ⏱️ **Coût de calcul** : un réseau est entraîné **pour chaque couple (énergie, mode)**, soit `Ne × n` entraînements (n = nombre d'orbitales). Avec les valeurs par défaut (90 000 itérations Adam), cela peut prendre longtemps : réduisez `N_train_adam` et `Ne` pour un premier essai.
+> ⏱️ **Computational cost**: one network is trained **for each (energy, mode) pair**, i.e. `Ne × n` trainings (n = number of orbitals). With the default values (90,000 Adam iterations) this can take a long time: reduce `N_train_adam` and `Ne` for a first try.
 
 ---
 
-## 📊 Résultats produits
+## 📊 Output
 
-Les résultats sont écrits dans `results_pair_<i>_<j>/` (méthode `pair`) ou `results_seq_<start>_<n>/` (méthode `sequential`) :
+Results are written to `results_pair_<i>_<j>/` (`pair` method) or `results_seq_<start>_<n>/` (`sequential` method):
 
-| Fichier | Contenu |
+| File | Content |
 |---|---|
-| `current_data_physical.dat` | Temps (s) et courant (A) — **résultat principal** |
-| `current_data_normalized.dat` | Même chose en unités adimensionnées |
-| `time_*.dat`, `current_*.dat` | Colonnes séparées |
-| `complex_current.dat` | Parties réelle et imaginaire du courant intégré |
-| `perturbation.png`, `training_history.png`, `simulation_summary.png` | Impulsion gaussienne, historique d'entraînement, figure de synthèse |
-| `simulation_summary.txt` | Résumé de la simulation et temps de calcul |
+| `current_data_physical.dat` | Time (s) and current (A) — **main result** |
+| `current_data_normalized.dat` | Same, in dimensionless units |
+| `time_*.dat`, `current_*.dat` | Separate columns |
+| `complex_current.dat` | Real and imaginary parts of the integrated current |
+| `perturbation.png`, `training_history.png`, `simulation_summary.png` | Gaussian pulse, training history, summary figure |
+| `simulation_summary.txt` | Simulation summary and run time |
 
 ---
 
-## 🧠 Détails du réseau de neurones
+## 🧠 Neural network details
 
-- **Entrée** : le temps normalisé `t` (1 neurone).
-- **Sortie** : `2n` neurones → parties réelle `u(t)` et imaginaire `v(t)` de `ψ_p(t)`.
-- **Perte** = `λ_pde · L_EDP + λ_ic · L_CI`
-  - `L_EDP` : résidu de l'équation de Schrödinger (séparée en parties réelle/imaginaire), évalué sur des points de collocation tirés aléatoirement, avec les dérivées temporelles obtenues par différentiation automatique.
-  - `L_CI` : impose `ψ_p(t = 0) = 0`.
-- **Optimisation hybride** : Adam (avec décroissance exponentielle du taux d'apprentissage) puis affinage par L-BFGS (SciPy).
-
----
-
-## ⚠️ Hypothèses et limites actuelles
-
-- Les électrodes gauche et droite sont **identiques** (système symétrique) : `Σ_total = 2 Σ_électrode`.
-- `Σ` et `Γ` sont évaluées **au niveau de Fermi uniquement** puis utilisées pour toutes les énergies (approximation de type « large bande »).
-- La géométrie construite est **linéaire** (chaîne atomique le long de x).
-- La perturbation agit sur l'élément `H[0, 1]` de l'Hamiltonien.
-- Si une longueur de liaison est absente de la base, `BondDatabase` la demande à l'utilisateur au clavier (valeur par défaut 1.5 Å).
+- **Input**: normalized time `t` (1 neuron).
+- **Output**: `2n` neurons → real part `u(t)` and imaginary part `v(t)` of `ψ_p(t)`.
+- **Loss** = `λ_pde · L_PDE + λ_ic · L_IC`
+  - `L_PDE`: residual of the Schrödinger equation (split into real and imaginary parts), evaluated on randomly sampled collocation points, with time derivatives obtained by automatic differentiation.
+  - `L_IC`: enforces `ψ_p(t = 0) = 0`.
+- **Hybrid optimization**: Adam (with exponential learning-rate decay) followed by L-BFGS refinement (SciPy).
 
 ---
 
-## 👤 Auteur
+## ⚠️ Current assumptions and limitations
+
+- The left and right electrodes are **identical** (symmetric system): `Σ_total = 2 Σ_lead`.
+- `Σ` and `Γ` are evaluated **at the Fermi level only** and then used for all energies (wide-band-like approximation).
+- The generated geometry is **linear** (atomic chain along x).
+- The perturbation acts on the `H[0, 1]` element of the Hamiltonian.
+- If a bond length is missing from the database, `BondDatabase` asks the user for it on the keyboard (default 1.5 Å).
+
+---
+
+## 👤 Author
 
 [delchere](https://github.com/delchere)
